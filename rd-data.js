@@ -16,7 +16,7 @@ var RESERVED_RD_DATA = {};
 var RESERVED_LOADED_RD_FILES = [];
 var RESERVED_PROMISED_LOADING = {};
 
-function is_dependencies_loaded(){
+function are_dependencies_loaded(){
     if( typeof $ === 'undefined' ){
 
         if( typeof jQuery === 'undefined' ){
@@ -48,7 +48,7 @@ function rd_ajax(url, data, callback, args = {}){
 
     //log(data);
 
-    if( !is_dependencies_loaded() ) return false;
+    if( !are_dependencies_loaded() ) return false;
    
     default_args = {
         url: url,
@@ -92,7 +92,7 @@ function rd_el_replace( old_el, html ){
 
 function extract_rd_parts( html ){
 
-    if( !is_dependencies_loaded() ) return false;
+    if( !are_dependencies_loaded() ) return false;
 
 	var p = html.indexOf('<rd-group');
 	var l = html.indexOf('</rd-group');
