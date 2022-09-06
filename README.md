@@ -63,7 +63,7 @@ There are following advantages to use this libaray
 
 	<rd name="single_item_ratings" rd_task="loop" var_name="rating">
 		<div class="user-name">Username: {{rating.username}}</div>
-		<p class="rating-number">Rating: {{rating.number}}</p>
+		<p class="rating">Rating: {{rating.rating}}</p>
 	</rd>
 
 </rd-group>
