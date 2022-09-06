@@ -1,12 +1,12 @@
 # rd-data Javascript Libary
 ## Info
 This javascript library is used to render dynamic content from rd-part file with dynamic data.
-The codes in rd-file same as html data structure and can render its content in-line javascript code and rd tasks.
+The codes in rd-file same as html data structure and can render its content inline javascript code and rd tasks.
 
 ## Advantage
-There are following advantage to use this libaray
-- Same as html data structure
-- There are in-built tasks are added in library like- render, loop, ajax
+There are following advantages to use this libaray
+- Same as html structure
+- There are in-built tasks are added in library - render, loop, ajax
 - Render dynamic data in html with inline javascript code and rd tasks.
 
 ## Usage
