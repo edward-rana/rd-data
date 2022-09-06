@@ -14,7 +14,7 @@ There are following advantages to use this libaray
 - Depending on jquery will be removed soon.
 
 - To load rd-parts from server ( Library using jquery ajax request to the server for file )
-- If a rd-parts-file can access from site url 'https://example.com/rd-parts/rd-file1.php'
+- If a rd-parts-file can be accessed from site url 'https://example.com/rd-parts/rd-file1.php'
   or multiple files 'https://example.com/rd-parts/rd-file2.php', 'https://example.com/rd-parts/rd-file3.php'.
   
   #### There are methods to load those files
