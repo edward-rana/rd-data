@@ -1,6 +1,6 @@
 # rd-data Javascript Libary
 ## Info
-This javascript library is used to render dynamic data in rd-part file.
+This javascript library is used to render dynamic content from rd-part file with dynamic data.
 The codes in rd-file same as html data structure and can render its content in-line javascript code and rd tasks.
 
 ## Advantage
