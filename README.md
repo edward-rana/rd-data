@@ -20,24 +20,24 @@ There are following advantages to use this libaray
   #### There are methods to load those files
  - For single file loading
   ```
-  load_rd_parts('https://example.com/rd-parts/rd-file1').then(){
+  load_rd_parts('https://example.com/rd-parts/rd-file1').then({
       console.log("rd-parts Loaded..");
-  };
+  });
   ```
   #### OR
   ```
-  load_rd_parts('rd-file1', 'https://example.com/rd-parts/').then(){
+  load_rd_parts('rd-file1', 'https://example.com/rd-parts/').then({
       console.log("rd-parts Loaded..");
-  };
+  });
   ```
   
   
   - For multiple file loading
   
   ```
-  load_rd_parts(['rd-file1', 'rd-file2', 'rd-file3'], 'https://example.com/rd-parts/').then(){
+  load_rd_parts(['rd-file1', 'rd-file2', 'rd-file3'], 'https://example.com/rd-parts/').then({
       console.log("rd-parts Loaded..");
-  };
+  });
   ```
   ## Example code structures for rd-parts-file
   
