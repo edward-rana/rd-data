@@ -16,7 +16,7 @@ var RESERVED_RD_DATA = {};
 var RESERVED_LOADED_RD_FILES = [];
 var RESERVED_PROMISED_LOADING = {};
 
-function are_dependencies_loaded(){
+function is_dependencies_loaded(){
     if( typeof $ === 'undefined' ){
 
         if( typeof jQuery === 'undefined' ){
@@ -48,7 +48,7 @@ function rd_ajax(url, data, callback, args = {}){
 
     //log(data);
 
-    if( !are_dependencies_loaded() ) return false;
+    if( !is_dependencies_loaded() ) return false;
    
     default_args = {
         url: url,
@@ -92,20 +92,31 @@ function rd_el_replace( old_el, html ){
 
 function extract_rd_parts( html ){
 
-    if( !are_dependencies_loaded() ) return false;
+    if( !is_dependencies_loaded() ) return false;
 
-	var p = html.indexOf('<rd-group');
-	var l = html.indexOf('</rd-group');
+    var rd_tag = 'rd-group';
 
-	
+	var p = html.indexOf('<'+rd_tag+' ');
+
+    if( p > -1 ){
+        var l = html.indexOf('</'+rd_tag+'>');
+    }
+    else{
+        rd_tag = 'rd';
+
+        var p = html.indexOf('<'+rd_tag+' ');
+        var l = html.indexOf('</'+rd_tag+'>');
+    }
 
 	if( p < 0 || l < 0 ) return html;
 
 	//log( html );
 
-	var rd_html = html.substr(p, (l - p + 11) );
+	var rd_html = html.substr(p, (l - p + rd_tag.length+3) );
+    //log( rd_html );
 
-	var rem_html = html.substr(l+11);
+	var rem_html = html.substr(l+rd_tag.length+4);
+    //log( rem_html );
 
 	var parser = new DOMParser();
 	var xml = parser.parseFromString(rd_html, "text/xml");
@@ -118,11 +129,19 @@ function extract_rd_parts( html ){
 	var rd_group = xml.querySelector("rd-group");
 	//log(rd_group);
 
-	var rd_parts = rd_group.querySelectorAll("rd");
+    if( rd_group ){
+        var rd_parts = rd_group.querySelectorAll("rd");
+        var rd_group_name = rd_group.getAttribute("name");
+    }
+    else{
+        var rd_parts = xml.querySelectorAll("rd");
+        var rd_group_name = '';
+    }
+
 	//log( rd_parts );
 
-	if( rd_group && rd_parts ){
-		capture_rd_parts( rd_parts, rd_group.getAttribute("name") );
+	if( rd_parts ){
+		capture_rd_parts( rd_parts, rd_group_name );
 	}
 
 	return rem_html;
