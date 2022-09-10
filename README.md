@@ -49,11 +49,11 @@ There are following advantages to use this libaray
 			<h1 class="item-title">{{item.title}}</h1>
 			<p class="item-title">{{item.info}}</p>
 
-			<div class="item-images" rd_task="loop" data="item.images" var_name="image">
+			<rd-div class="item-images" task="loop" data="item.images" var="image">
 				<div class="single-image">
 					<img src="{{image.src}}" alt="{{image.alt}}"/>
 				</div>
-			</div>
+			</rd-div>
 
 			<div class="item-ratings">
 				{{ get_rd('list.single_item_ratings', item.ratings) }}
