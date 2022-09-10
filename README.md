@@ -44,7 +44,7 @@ There are following advantages to use this libaray
   ```
   <rd-group name="list">
 
-	<rd name="items" rd_task="loop" var_name="item">
+	<rd name="items" task="loop" var="item">
 		<div class="single-item">
 			<h1 class="item-title">{{item.title}}</h1>
 			<p class="item-title">{{item.info}}</p>
@@ -61,7 +61,7 @@ There are following advantages to use this libaray
 		</div>
 	</rd>
 
-	<rd name="single_item_ratings" rd_task="loop" var_name="rating">
+	<rd name="single_item_ratings" task="loop" var="rating">
 		<div class="single-rating">
 			<div class="user-name">Username: {{rating.username}}</div>
 			<p class="rating">Rating: {{rating.rating}}</p>
