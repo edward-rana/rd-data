@@ -16,7 +16,7 @@ var RESERVED_RD_DATA = {};
 var RESERVED_LOADED_RD_FILES = [];
 var RESERVED_PROMISED_LOADING = {};
 
-function is_dependencies_loaded(){
+function are_dependencies_loaded(){
     if( typeof $ === 'undefined' ){
 
         if( typeof jQuery === 'undefined' ){
@@ -31,8 +31,8 @@ function is_dependencies_loaded(){
     return true;
 }
 
-function log(str){
-	console.log(str);
+function log(str, type = 'log'){
+    console[type]( str );
 }
 
 function isJson(str) {
@@ -48,7 +48,7 @@ function rd_ajax(url, data, callback, args = {}){
 
     //log(data);
 
-    if( !is_dependencies_loaded() ) return false;
+    if( !are_dependencies_loaded() ) return false;
    
     default_args = {
         url: url,
@@ -90,172 +90,284 @@ function rd_el_replace( old_el, html ){
     $(old_el).replaceWith(html);
 }
 
-function extract_rd_parts( html ){
+function rd_extract_attrs(html, remove_attrs = true){
 
-    if( !is_dependencies_loaded() ) return false;
+    var attrs = {};
+    var ok_done = false;
+    var rd_in_quote = {};
 
-    var rd_tag = 'rd-group';
+    const in_quote = function(){
+        for(var k in rd_in_quote){
+            if( rd_in_quote[k] ){
+                return true;
+            }
+        }
+        return false;
+    };
 
-	var p = html.indexOf('<'+rd_tag+' ');
+    for( var j = 0; j < html.length; j++ ){
 
-    if( p > -1 ){
-        var l = html.indexOf('</'+rd_tag+'>');
-    }
-    else{
-        rd_tag = 'rd';
+        if( html[j] == '"' || html[j] == "'" ){
+            if( html[j-1] != "\\" ){
+                if( !rd_in_quote[html[j]] ){
+                    rd_in_quote[html[j]] = true;
+                }
+                else{
+                    rd_in_quote[html[j]] = false;
+                }  
+            }
+        }
+        else if( !in_quote() && html[j] == '>' ){
+            if( ok_done ){
+                break;
+            }
 
-        var p = html.indexOf('<'+rd_tag+' ');
-        var l = html.indexOf('</'+rd_tag+'>');
-    }
+            const regex = new RegExp(`(\\S+)\\s*=\\s*([']|["])\\s*([\\W\\w]*?)\\s*\\2`, 'gm');
 
-	if( p < 0 || l < 0 ) return html;
+            while ((m = regex.exec(html.substr(0, j))) !== null) {
+                // This is necessary to avoid infinite loops with zero-width matches
+                if (m.index === regex.lastIndex) {
+                    regex.lastIndex++;
+                }
 
-	//log( html );
+                attrs[m[1]] = m[3];  
+            }
 
-	var rd_html = html.substr(p, (l - p + rd_tag.length+3) );
-    //log( rd_html );
+            if( remove_attrs ){
 
-	var rem_html = html.substr(l+rd_tag.length+4);
-    //log( rem_html );
-
-	var parser = new DOMParser();
-	var xml = parser.parseFromString(rd_html, "text/xml");
-	//log( xml );
-
-	if( xml.querySelector("parsererror") ){
-		log( xml.querySelector("parsererror").innerText );
-	}
-
-	var rd_group = xml.querySelector("rd-group");
-	//log(rd_group);
-
-    if( rd_group ){
-        var rd_parts = rd_group.querySelectorAll("rd");
-        var rd_group_name = rd_group.getAttribute("name");
-    }
-    else{
-        var rd_parts = xml.querySelectorAll("rd");
-        var rd_group_name = '';
-    }
-
-	//log( rd_parts );
-
-	if( rd_parts ){
-		capture_rd_parts( rd_parts, rd_group_name );
-	}
-
-	return rem_html;
-}
-
-function capture_rd_parts( rd_parts, group_name = '' ){
-	for(var i=0; i < rd_parts.length; i++ ){
-		var rd_part = rd_parts[i];
-
-		//log( rd_part );
-
-		build_rd_codes( rd_part );
-
-		var rd_name = ((group_name)? group_name+'.' : '')+ rd_part.getAttribute("name");
-
-        if( rd_part.querySelectorAll("[rd_attr]").length > 0 ){
-            rd_part.querySelectorAll("[rd_attr]").forEach(function(el){
-                log(el);
-                var attr = el.getAttribute("rd_attr");
-
-                attr = attr.split("=");
-
-                el.setAttribute(attr[0], (attr[1])?attr[1]:"");
-                el.removeAttribute("rd_attr");
-            });
+                var pattern = /(name|task|data|var|code)\s*=\s*([']|["])\s*([\W\w]*?)\s*\2/gm;
+                html = html.substr(0, j).replace(pattern, '') + html.substr(j);
+                ok_done = true;
+                j = -1;
+                rd_in_quote = {};
+            }
+            else{
+                break;
+            }
         }
 
-		RESERVED_RD_DATA[rd_name] = '`'+rd_part.innerHTML+'`';
+        //log( rd_in_quote );
+    }
 
-		log( RESERVED_RD_DATA );		
-	}
+    return {attrs: attrs, html: html, tag_close_pos: j+1};
 }
 
-function build_rd_codes( rd_part ){
-	var tmp_rd_part = rd_part;
+function extract_rd_parts( html, file = '' ){
+    if( !are_dependencies_loaded() ) return false;
 
-	for( var i=0; i < 500; i++ ){
-		if( tmp_rd_part.querySelector("[rd_task]") ){
-			tmp_rd_part = tmp_rd_part.querySelector("[rd_task]");
+    html = html.replaceAll(/<\!--([\W\w]*?)-->/g, ''); //.replace(/\s+/g, " ");
 
-			//log( tmp_rd_part );
-		}
-		else if( rd_part.hasAttribute("rd_task") || rd_part.querySelector("[rd_task]") ){
+    //html = html.replaceAll('></', '> </');
 
-			var codes = build_rd_task( tmp_rd_part );
+    html = html.replaceAll('{{', '`+ ');
+    html = html.replaceAll('}}', ' +`');
 
-		    //log( codes );
+    var p = html.indexOf('<rd-group ');
+    var rd_group_name = '';
+    var rem_html = '';
 
-			tmp_rd_part.innerHTML = codes;
+    if( p > -1 ){
+        var l = html.indexOf('</rd-group>');
 
-			tmp_rd_part = rd_part;
-		}
-		else{
-			break;
-		}
-	}
+        rem_html = html.substr(l+11);
+
+        html = html.substr(p, (l-p));
+        //log( html );
+
+        var attrs = rd_extract_attrs(html);
+        html = attrs.html;
+
+        //log( attrs );
+
+        if( attrs.attrs.name ){
+            rd_group_name = attrs.attrs.name;
+        }
+
+        html = html.substr(attrs.tag_close_pos, l - attrs.tag_close_pos);
+    }
+
+    html = html.trim();
+
+    //log( html );
+
+    var rd_parts = html.split('<rd ');
+    //log( rd_parts );
+
+    if( rd_parts.length > 0 ){
+        for(var i in rd_parts){
+            var rd_part = rd_parts[i];
+            if( rd_part.indexOf('</rd>') < 0 ) continue;
+
+            tmp_html = extract_rd_part( rd_part, rd_group_name );
+
+            if( !rd_group_name ){
+                rem_html = tmp_html;
+            }
+        }
+        return rem_html;
+    }
+
+    return '';
 }
 
-function build_rd_task( e ){
-	
-	var translated_content = e.innerHTML.replaceAll(/<\!--([\W\w]*?)-->/g, '');
+function extract_rd_part( html, rd_group_name = '' ){
+    //log( html );
 
-	//log(translated_content);
+    var rd_attrs = rd_extract_attrs( html, false );
 
-	translated_content = translated_content.replaceAll('{{', '`+ ');
-    translated_content = translated_content.replaceAll('}}', ' +`');
+    if( !rd_attrs.attrs.name ){
+        return false;
+    }
+
+    //log( rd_attrs );
+    var rd_task_counter = -1;
+    var rd_task_holder = [];
+    var in_rd_opening = true;
+
+    for(var k=0; k < html.length; k++){
+        var i = html.indexOf('<rd-');
+
+        if( i > -1 ){
+
+            var attrs = rd_extract_attrs(html.substr(i));
+
+            rd_task_counter++;
+            rd_task_holder[rd_task_counter] = {task: "render"};
+
+            html = html.substr(0, i) + attrs.html;
+            var tag_close_pos = attrs.tag_close_pos;
+            attrs = attrs.attrs;
+
+            //log( attrs );
+            var args_data = '""';
+            var js_code = '';
+
+            var codes = '`+ function(){ var rd_str = ""; ';
+
+            if( attrs ){
+                //codes += ' var '+attrs.var+' = '+args_data+'; '+js_code+' rd_str += `';
+                var rd_task = build_rd_task(attrs);
+                rd_task_holder[rd_task_counter] = {task: (attrs.task)?attrs.task: "render", params: rd_task.params};
+                codes += rd_task.codes;
+            }
+
+            html = html.substr(0, i+tag_close_pos) + codes + html.substr(i+tag_close_pos);
+
+            html = html.substr(0, i+1) + html.substr(i+4);
+
+            //log("Condition 1 : *");
+        }
+        else if( html.indexOf('</rd-') > -1 ){
+            i = html.indexOf('</rd-');
+
+            if( in_rd_opening ){
+                rd_task_counter = -1;
+                in_rd_opening = false;
+            }
+
+            //log( rd_task_counter );
+            //log( rd_task_holder );
+
+            rd_task_counter++;
+            var e_task = rd_task_holder[rd_task_counter].task;
+            
+            //log(e_task);
+
+            if( e_task == 'render' ){
+                html = html.substr(0, i) + '`; return rd_str; }() +`' + '</' + html.substr(i+5);
+            }
+            else if( e_task == 'loop' ){
+                html = html.substr(0, i) + '`; } } return rd_str; }() +`' + '</' + html.substr(i+5);
+            }
+            else if( e_task == 'ajax' ){
+                html = html.substr(0, i) + '`; rd_el_replace( document.querySelector("[rdk=\''+rd_task_holder[rd_task_counter].params.key+'\']"), rd_gen_content ); }, '+rd_task_holder[rd_task_counter].params.default_args+'); return rd_str; }() +`' + '</' + html.substr(i+5);
+            }
+
+            //log( html );
+
+            //log("Condition 2 : *");
+        }
+        else{
+            break;
+        }
+    } //Main loop end..
+
+    var args_data = '""';
+    var js_code = '';
 
     var codes = '`+ function(){ var rd_str = ""; ';
 
-    var task = e.getAttribute('rd_task');
+    var rd_task = build_rd_task(rd_attrs.attrs);
 
-    var args_data = ( e.getAttribute("data") )? e.getAttribute("data") : 'reserved_rd_data';
+    codes += rd_task.codes;
+
+    html = codes + html.substr(rd_attrs.tag_close_pos);
+
+    var ob_key = ((rd_group_name)?rd_group_name+'.'+rd_attrs.attrs.name : rd_attrs.attrs.name);
+          
+    //log( rd_task_counter );
+    var e_task = (rd_attrs.task)?rd_attrs.task: "render";
+
+    i = html.indexOf("</rd>");
+
+    if( e_task == 'render' ){
+        RESERVED_RD_DATA[ob_key] = '`' + html.substr(0, i).trim() +'`; return rd_str; }();';
+    }
+    else if( e_task == 'loop' ){
+        RESERVED_RD_DATA[ob_key] = '`' + html.substr(0, i).trim() +'`; } } return rd_str; }();';
+    }
+    else if( e_task == 'ajax' ){
+        RESERVED_RD_DATA[ob_key] = '`' + html.substr(0, i).trim() +'`; rd_el_replace( document.querySelector("[rdk=\''+rd_task.params.key+'\']"), rd_gen_content ); }, '+rd_task.params.default_args+'); return rd_str; }();';
+    }
+
+    return html.substr(i+5);
+
+    //log( RESERVED_RD_DATA );
+}
+
+function build_rd_task(attrs){
+    //log(attrs);
+    var args_data = ( attrs.data )? attrs.data : 'reserved_rd_data';
 
     args_data = (isJson(args_data))? JSON.stringify(args_data): args_data;
 
-    var var_name = e.getAttribute('var_name');
-    var js_code = (e.getAttribute('script'))? e.getAttribute('script'): "";
-
+    var task = (attrs.task)?attrs.task: 'render';
+    var var_name = (attrs.var)?attrs.var: 'data';
+    var js_code = (attrs.code)? attrs.code: "";
+    var codes = '';
+    var params = {};
 
     if( task == 'render' ){
-        codes += ' var '+var_name+' = '+args_data+'; '+js_code+' rd_str += `'+ translated_content +'`;';
+        codes += ' var '+var_name+' = '+args_data+'; '+js_code+' rd_str += `';
     }
     else if( task == 'loop' ){
-        codes += ' var rd_loop_data = '+args_data+'; if( rd_loop_data ){ for(var key in rd_loop_data){ var '+ var_name +' = rd_loop_data[key]; '+js_code+' rd_str += `'+translated_content+'`; } }';
+        codes += ' var rd_loop_data = '+args_data+'; if( rd_loop_data ){ for(var key in rd_loop_data){ var '+ var_name +' = rd_loop_data[key]; '+js_code+' rd_str += `';
     }
     else if( task == 'ajax' ){
         var key = rd_generate_key();
 
         if(isJson(args_data)){
-        	args_data = JSON.parse(args_data);
+            args_data = JSON.parse(args_data);
         }
 
         var default_args = {processData: true, contentType: "application/x-www-form-urlencoded", type: "POST", async: true};
 
         if( args_data ){
-	        for( obj_key in default_args ){
-	            if( args_data.hasOwnProperty(obj_key) ){
-	                default_args[obj_key] = args_data[obj_key];
-	            }
-	        }
-	    }
+            for( obj_key in default_args ){
+                if( args_data.hasOwnProperty(obj_key) ){
+                    default_args[obj_key] = args_data[obj_key];
+                }
+            }
+        }
 
         default_args = JSON.stringify( default_args );
 
-        codes += 'rd_str += `<div rdk="'+key+'"></div>`; var args_data = '+args_data+'; rd_ajax(args_data.url, args_data.post_data, function(res){ log(res); res = (isJson(res))?JSON.parse(res):{}; log(res); var '+var_name+' = res; '+js_code+' var translated_content = `'+translated_content+'`; rd_el_replace( document.querySelector("[rdk=\''+key+'\']"), translated_content ); }, '+default_args+');';
+        codes += 'rd_str += `<div rdk="'+key+'"></div>`; var args_data = '+args_data+'; rd_ajax(args_data.url, args_data.post_data, function(res){ log(res); res = (isJson(res))?JSON.parse(res):{}; log(res); var '+var_name+' = res; '+js_code+' var rd_gen_content = `';
+
+        params = {default_args: default_args, key: key};
     }
 
-    e.removeAttribute('rd_task');
-    e.removeAttribute('data');
-    e.removeAttribute('var_name');
-
-    codes += ' return rd_str; }() +`';
-
-    return codes;
+    return {codes: codes, params: params};
 }
 
 function load_rd_parts_from_server( rd_parts_file, async = true, promise_key = '' ){
@@ -277,12 +389,13 @@ function load_rd_parts_from_server( rd_parts_file, async = true, promise_key = '
         }
 
         if( xhr.status == 200 && res ){
-            var rem_html = extract_rd_parts( res );
+            var rem_html = extract_rd_parts( res, xhr.params.url );
 
             if( rem_html ){
                 rem_html = rem_html.trim();
                 //log(rem_html);
-            	document.querySelector("body").innerHTML += rem_html;
+            	//document.querySelector("body").innerHTML += rem_html;
+                $("body").append(rem_html);
             }
         }
         else{
@@ -291,7 +404,7 @@ function load_rd_parts_from_server( rd_parts_file, async = true, promise_key = '
 
         //log( RESERVED_RD_DATA );
 
-    }, {async: async, params : {promise_key: promise_key}});
+    }, {async: async, params : {promise_key: promise_key, url: url}});
 
     return true;
 }
@@ -322,15 +435,15 @@ function load_rd_parts( rd_parts_files, prepend_path = '', async = true ){
         var intrvl = setInterval(function(){
 
             if( RESERVED_PROMISED_LOADING[promise_key] < 1 ){
-                log("Promise resolved for: '"+promise_key+"'");
+                //log("Promise resolved for: '"+promise_key+"'");
                 delete RESERVED_PROMISED_LOADING[promise_key];
-                log( RESERVED_PROMISED_LOADING );
+                //log( RESERVED_PROMISED_LOADING );
            
                 if( !RESERVED_PROMISED_LOADING.keys ){
 
-                    var rd_exports = document.querySelectorAll("rd-export");
+                    var rd_renders = document.querySelectorAll("rd-render");
 
-                    rd_exports.forEach(function(e){
+                    rd_renders.forEach(function(e){
                         if( e.getAttribute("name") && e.getAttribute("data") ){
                             rd_el_replace(e, get_rd( e.getAttribute("name"), JSON.parse( e.getAttribute("data") ) ) );
                         }  
